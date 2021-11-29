@@ -33,10 +33,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
-import java.security.InvalidAlgorithmParameterException;
-import java.security.KeyPairGenerator;
-import java.security.KeyStore;
-import java.security.KeyStoreException;
+import java.security.*;
 import java.security.cert.Certificate;
 import java.util.Arrays;
 import java.util.Collections;
@@ -318,6 +315,40 @@ public abstract class HttpTLSTest extends HttpTestBase {
       .requestOptions(new RequestOptions().setSsl(true).setPort(4043).setHost("host2.com."))
       .pass();
     assertEquals("host2.com", TestUtils.cnOf(test.clientPeerCert()));
+  }
+
+  @Test
+  // Provide a Provider that can disable some algorithms
+  public void testTLSDisableAlgorithmByUsingCustomProvider() throws Exception {
+    // RSA-PSS is mandatory for TLS 1.3
+    Provider provider = new DisableAlgorithmTestProvider();
+    try {
+      Security.addProvider(provider);
+      testTLS(Cert.NONE, Trust.NONE, Cert.SERVER_JKS, Trust.NONE).clientTrustAll()
+        .clientEnabledSecureTransportProtocol(new String[]{"TLSv1.3"})
+        .serverEnabledSecureTransportProtocol(new String[]{"TLSv1.3"})
+        .sslContextProviderName(provider.getName())
+        .fail();
+    } finally {
+      Security.removeProvider(provider.getName());
+    }
+  }
+
+  @Test
+  // Provide a Provider that can disable some algorithms
+  public void testTLSDisableAlgorithmByUsingCustomProviderTLS12() throws Exception {
+    // RSA-PSS is not mandatory for TLS 1.2
+    Provider provider = new DisableAlgorithmTestProvider();
+    try {
+      Security.addProvider(provider);
+      testTLS(Cert.NONE, Trust.NONE, Cert.SERVER_JKS, Trust.NONE).clientTrustAll()
+        .clientEnabledSecureTransportProtocol(new String[]{"TLSv1.2"})
+        .serverEnabledSecureTransportProtocol(new String[]{"TLSv1.2"})
+        .sslContextProviderName(provider.getName())
+        .pass();
+    } finally {
+      Security.removeProvider(provider.getName());
+    }
   }
 
   /*
@@ -957,6 +988,7 @@ public abstract class HttpTLSTest extends HttpTestBase {
     private boolean followRedirects;
     private boolean serverSNI;
     private boolean clientForceSNI;
+    private String sslContextProviderName;
     private Function<HttpClient, Future<HttpClientRequest>> requestProvider = client -> {
       String httpHost;
       if (connectHostname != null) {
@@ -1123,6 +1155,11 @@ public abstract class HttpTLSTest extends HttpTestBase {
       return this;
     }
 
+    TLSTest sslContextProviderName(String sslContextProviderName) {
+      this.sslContextProviderName = sslContextProviderName;
+      return this;
+    }
+
     public Certificate clientPeerCert() {
       return clientPeerCert;
     }
@@ -1195,6 +1232,9 @@ public abstract class HttpTLSTest extends HttpTestBase {
       }
       if (serverOpenSSL) {
         serverOptions.setOpenSslEngineOptions(new OpenSSLEngineOptions());
+      }
+      if (sslContextProviderName != null) {
+        serverOptions.setSslContextProviderName(sslContextProviderName);
       }
       serverOptions.setUseAlpn(serverUsesAlpn);
       serverOptions.setSsl(serverSSL);

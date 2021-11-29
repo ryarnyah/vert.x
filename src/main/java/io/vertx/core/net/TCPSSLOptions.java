@@ -132,6 +132,7 @@ public abstract class TCPSSLOptions extends NetworkOptions {
   private boolean tcpFastOpen;
   private boolean tcpCork;
   private boolean tcpQuickAck;
+  private String sslContextProviderName;
 
   /**
    * Default constructor
@@ -169,6 +170,7 @@ public abstract class TCPSSLOptions extends NetworkOptions {
     this.tcpFastOpen = other.isTcpFastOpen();
     this.tcpCork = other.isTcpCork();
     this.tcpQuickAck = other.isTcpQuickAck();
+    this.sslContextProviderName = other.getSslContextProviderName();
   }
 
   /**
@@ -813,4 +815,20 @@ public abstract class TCPSSLOptions extends NetworkOptions {
     return (TCPSSLOptions) super.setReusePort(reusePort);
   }
 
+  /**
+   * Set {@link java.security.Provider} to provide {@link javax.net.ssl.SSLContext}.
+   * @param sslContextProviderName the name of the provider to use.
+   * @return a reference to this, so the API can be used fluently
+   */
+  public TCPSSLOptions setSslContextProviderName(String sslContextProviderName) {
+    this.sslContextProviderName = sslContextProviderName;
+    return this;
+  }
+
+  /**
+   * @return the name of the {@link java.security.Provider} to provide {@link javax.net.ssl.SSLContext}.
+   */
+  public String getSslContextProviderName() {
+    return sslContextProviderName;
+  }
 }

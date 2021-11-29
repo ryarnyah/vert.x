@@ -11,6 +11,7 @@
 
 package io.vertx.core.net;
 
+import io.netty.buffer.ByteBufAllocator;
 import io.netty.handler.ssl.OpenSsl;
 import io.netty.handler.ssl.OpenSslServerContext;
 import io.netty.handler.ssl.OpenSslServerSessionContext;
@@ -28,6 +29,8 @@ import org.junit.Test;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLSessionContext;
+import java.security.Provider;
+import java.security.Security;
 import java.util.*;
 
 /**
@@ -57,6 +60,50 @@ public class SSLHelperTest extends VertxTestBase {
         Trust.SERVER_PEM.get());
     SslContext ctx = helper.getContext((VertxInternal) vertx);
     assertEquals(expected, new HashSet<>(ctx.cipherSuites()));
+  }
+
+  @Test
+  public void testUseCustomProviderForSSLHelper() throws Exception {
+    Provider provider = new SSLHelperTestProvider();
+    try {
+      Security.addProvider(provider);
+      SSLContext context = SSLContext.getInstance("TLS", provider);
+      context.init(null, null, null);
+      SSLEngine engine = context.createSSLEngine();
+      String[] expected = engine.getEnabledProtocols();
+      HttpClientOptions httpClientOptions = new HttpClientOptions();
+      httpClientOptions.setSslContextProviderName(provider.getName());
+      SSLHelper helper = new SSLHelper(httpClientOptions,
+        Cert.CLIENT_JKS.get(),
+        Trust.SERVER_JKS.get()
+      );
+      SSLEngine sslEngine = helper.getContext((VertxInternal) vertx).newEngine(ByteBufAllocator.DEFAULT);
+      assertEquals(new HashSet<>(Arrays.asList(expected)), new HashSet<>(Arrays.asList(sslEngine.getEnabledProtocols())));
+    } finally {
+      Security.removeProvider(provider.getName());
+    }
+  }
+
+  @Test
+  public void testUseCustomProviderForSSLHelperServer() throws Exception {
+    Provider provider = new SSLHelperTestProvider();
+    try {
+      Security.addProvider(provider);
+      SSLContext context = SSLContext.getInstance("TLS", provider);
+      context.init(null, null, null);
+      SSLEngine engine = context.createSSLEngine();
+      String[] expected = engine.getEnabledProtocols();
+      NetServerOptions netServerOptions = new NetServerOptions();
+      netServerOptions.setSslContextProviderName(provider.getName());
+      SSLHelper helper = new SSLHelper(netServerOptions,
+        Cert.CLIENT_JKS.get(),
+        Trust.SERVER_JKS.get()
+      );
+      SSLEngine sslEngine = helper.getContext((VertxInternal) vertx).newEngine(ByteBufAllocator.DEFAULT);
+      assertEquals(new HashSet<>(Arrays.asList(expected)), new HashSet<>(Arrays.asList(sslEngine.getEnabledProtocols())));
+    } finally {
+      Security.removeProvider(provider.getName());
+    }
   }
 
   @Test

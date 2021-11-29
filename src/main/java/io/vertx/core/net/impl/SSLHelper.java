@@ -34,6 +34,8 @@ import io.vertx.core.net.TrustOptions;
 
 import javax.net.ssl.*;
 import java.io.ByteArrayInputStream;
+import java.security.Provider;
+import java.security.Security;
 import java.security.cert.CRL;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
@@ -114,6 +116,7 @@ public class SSLHelper {
   private boolean useAlpn;
   private List<String> applicationProtocols;
   private Set<String> enabledProtocols;
+  private Provider sslContextProvider;
 
   private String endpointIdentificationAlgorithm = "";
 
@@ -136,6 +139,7 @@ public class SSLHelper {
     this.openSsl = sslEngineOptions instanceof OpenSSLEngineOptions;
     this.useAlpn = options.isUseAlpn();
     this.enabledProtocols = options.getEnabledSecureTransportProtocols();
+    this.sslContextProvider = (options.getSslContextProviderName() != null) ? Security.getProvider(options.getSslContextProviderName()): null;
     this.openSslSessionCacheEnabled = (sslEngineOptions instanceof OpenSSLEngineOptions) && ((OpenSSLEngineOptions) sslEngineOptions).isSessionCacheEnabled();
   }
 
@@ -183,6 +187,7 @@ public class SSLHelper {
     this.enabledProtocols = that.enabledProtocols;
     this.endpointIdentificationAlgorithm = that.endpointIdentificationAlgorithm;
     this.openSslSessionCacheEnabled = that.openSslSessionCacheEnabled;
+    this.sslContextProvider = that.sslContextProvider;
   }
 
   public boolean isUseAlpn() {
@@ -276,6 +281,9 @@ public class SSLHelper {
             ApplicationProtocolConfig.SelectedListenerFailureBehavior.ACCEPT,
             applicationProtocols
         ));
+      }
+      if (sslContextProvider != null) {
+        builder.sslContextProvider(sslContextProvider);
       }
       SslContext ctx = builder.build();
       if (ctx instanceof OpenSslServerContext){

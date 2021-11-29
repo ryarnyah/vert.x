@@ -114,6 +114,11 @@ public class TCPSSLOptionsConverter {
             obj.setSsl((Boolean)member.getValue());
           }
           break;
+        case "sslContextProviderName":
+          if (member.getValue() instanceof String) {
+            obj.setSslContextProviderName((String)member.getValue());
+          }
+          break;
         case "sslHandshakeTimeout":
           if (member.getValue() instanceof Number) {
             obj.setSslHandshakeTimeout(((Number)member.getValue()).longValue());
@@ -221,6 +226,9 @@ public class TCPSSLOptionsConverter {
     json.put("readIdleTimeout", obj.getReadIdleTimeout());
     json.put("soLinger", obj.getSoLinger());
     json.put("ssl", obj.isSsl());
+    if (obj.getSslContextProviderName() != null) {
+      json.put("sslContextProviderName", obj.getSslContextProviderName());
+    }
     json.put("sslHandshakeTimeout", obj.getSslHandshakeTimeout());
     if (obj.getSslHandshakeTimeoutUnit() != null) {
       json.put("sslHandshakeTimeoutUnit", obj.getSslHandshakeTimeoutUnit().name());
